@@ -1,9 +1,8 @@
 """tipgstac config."""
 
-import pathlib
 from typing import Optional
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -25,3 +24,26 @@ class APISettings(BaseSettings):
         """Parse CORS origins."""
         return [origin.strip() for origin in v.split(",")]
 
+
+class CacheSettings(BaseSettings):
+    """Cache settings"""
+
+    # TTL of the cache in seconds
+    ttl: int = 300
+
+    # Maximum size of the LRU cache in MB
+    maxsize: int = 512
+
+    # Whether or not caching is enabled
+    disable: bool = False
+
+    model_config = {"env_prefix": "TIPG_STAC_CACHE_", "env_file": ".env"}
+
+    @model_validator(mode="after")
+    def check_enable(self):
+        """Check if cache is disabled."""
+        if self.disable:
+            self.ttl = 0
+            self.maxsize = 0
+
+        return self

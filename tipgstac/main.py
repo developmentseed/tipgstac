@@ -1,25 +1,21 @@
-"""tipg app."""
+"""tipgstac app."""
 
 from contextlib import asynccontextmanager
-from typing import Any, List
 
 import jinja2
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+from starlette.templating import Jinja2Templates
+from starlette_cramjam.middleware import CompressionMiddleware
 
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from tipg.factory import OGCFeaturesFactory
-from tipg.middleware import CacheControlMiddleware, CatalogUpdateMiddleware
+from tipgstac.factory import OGCFeaturesFactory
+from tipg.middleware import CacheControlMiddleware
 from tipg.settings import PostgresSettings
-
 from tipgstac import __version__ as tipg_version
 from tipgstac.database import close_db_connection, connect_to_db
 from tipgstac.dependencies import CatalogParams, CollectionParams
 from tipgstac.settings import APISettings
-
-from fastapi import FastAPI, Request
-
-from starlette.middleware.cors import CORSMiddleware
-from starlette.templating import Jinja2Templates
-from starlette_cramjam.middleware import CompressionMiddleware
 
 settings = APISettings()
 postgres_settings = PostgresSettings()

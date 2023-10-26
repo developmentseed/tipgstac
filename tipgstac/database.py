@@ -4,10 +4,9 @@ from typing import Optional
 
 import orjson
 from buildpg import asyncpg
+from fastapi import FastAPI
 
 from tipg.settings import PostgresSettings
-
-from fastapi import FastAPI
 
 
 class connection_factory:

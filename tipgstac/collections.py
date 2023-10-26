@@ -1,39 +1,20 @@
 """tipgstac collections."""
 
 import datetime
-import re
-from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 import json
+from typing import Any, Dict, List, Optional, Tuple, TypedDict
 
-from buildpg import RawDangerous as raw
-from buildpg import asyncpg, clauses
-from buildpg import funcs as pg_funcs
-from buildpg import logic, render
-from ciso8601 import parse_rfc3339
-from morecantile import Tile, TileMatrixSet
-from pydantic import BaseModel, Field, model_validator
+from buildpg import asyncpg, render
+from pydantic import Field
 from pygeofilter.ast import AstType
 
-from tipg.errors import (
-    InvalidDatetime,
-    InvalidDatetimeColumnName,
-    InvalidGeometryColumnName,
-    InvalidLimit,
-    InvalidPropertyName,
-    MissingDatetimeColumn,
-)
-from tipg.filter.evaluate import to_filter
-from tipg.filter.filters import bbox_to_wkt
-from tipg.logger import logger
+from tipg.collections import Collection, Column, FeatureCollection, Parameter
+from tipg.errors import InvalidLimit
 from tipg.model import Extent
-from tipg.settings import FeaturesSettings, TableSettings
-from tipg.collections import Collection, Feature, FeatureCollection
-
-from fastapi import FastAPI
+from tipg.settings import FeaturesSettings
 
 features_settings = FeaturesSettings()
 
-from tipg.collections import Column, Parameter
 
 class PgSTACCollection(Collection):
     """Model for DB Table and Function."""
@@ -96,21 +77,18 @@ class PgSTACCollection(Collection):
         cql_filter: Optional[AstType] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
-        geom: Optional[str] = None,
-        dt: Optional[str] = None,
         limit: Optional[int] = None,
-        offset: Optional[int] = None,
-        bbox_only: Optional[bool] = None,
-        simplify: Optional[float] = None,
-        geom_as_wkt: bool = False,
-        function_parameters: Optional[Dict[str, str]] = None,
-    ) -> Tuple[FeatureCollection, int]:
-        """Build and run Pg query."""
-        function_parameters = function_parameters or {}
-
-        if geom and geom.lower() != "none" and not self.get_geometry_column(geom):
-            raise InvalidGeometryColumnName(f"Invalid Geometry Column: {geom}.")
-
+        token: Optional[str] = None,
+        bbox_only: Optional[bool] = None,  # Not Available
+        simplify: Optional[float] = None,  # Not Available
+        geom_as_wkt: bool = False,  # Not Available
+    ) -> Tuple[
+        FeatureCollection,
+        Optional[int],
+        Optional[str],
+        Optional[str],
+    ]:
+        """Build and run PgSTAC query."""
         if limit and limit > features_settings.max_features_per_query:
             raise InvalidLimit(
                 f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
@@ -124,8 +102,7 @@ class PgSTACCollection(Collection):
             "bbox": bbox_filter,
             "datetime": datetime_filter,
             "limit": limit,
-            # we use `offset` not token :-(
-            # "token": token
+            "token": token
         }
         if ids_filter:
             base_args["ids"] = ids_filter
@@ -150,9 +127,14 @@ class PgSTACCollection(Collection):
         if context := fc.get("context"):
             count = context.get("matched")
 
+        next_token = fc.get("next")
+        prev_token = fc.get("prev")
+
         return (
             FeatureCollection(type="FeatureCollection", features=fc.get("features")),
-            count,  # type: ignore
+            count,
+            next_token,
+            prev_token,
         )
 
     async def get_tile(
