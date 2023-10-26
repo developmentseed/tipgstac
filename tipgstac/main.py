@@ -9,12 +9,12 @@ from starlette.templating import Jinja2Templates
 from starlette_cramjam.middleware import CompressionMiddleware
 
 from tipg.errors import DEFAULT_STATUS_CODES, add_exception_handlers
-from tipgstac.factory import OGCFeaturesFactory
 from tipg.middleware import CacheControlMiddleware
 from tipg.settings import PostgresSettings
 from tipgstac import __version__ as tipg_version
 from tipgstac.database import close_db_connection, connect_to_db
 from tipgstac.dependencies import CatalogParams, CollectionParams
+from tipgstac.factory import OGCFeaturesFactory
 from tipgstac.settings import APISettings
 
 settings = APISettings()

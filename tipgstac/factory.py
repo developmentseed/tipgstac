@@ -1,62 +1,42 @@
+"""Custom Factory."""
 
-import abc
-import csv
-import json
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generator, Iterable, List, Literal, Optional
-from urllib.parse import urlencode
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
-import jinja2
 import orjson
-from ciso8601 import parse_rfc3339
-from morecantile import Tile, TileMatrixSet
-from morecantile import tms as default_tms
-from morecantile.defaults import TileMatrixSets
+from fastapi import Depends, Path, Query
+from fastapi.responses import ORJSONResponse
 from pygeofilter.ast import AstType
+from starlette.datastructures import QueryParams
+from starlette.requests import Request
+from starlette.responses import StreamingResponse
 from typing_extensions import Annotated
 
-from tipg import model
-from tipg.collections import Catalog, Collection
+from tipg import factory, model
+from tipg.collections import Collection
 from tipg.dependencies import (
-    CatalogParams,
-    CollectionParams,
     ItemsOutputType,
-    OutputType,
-    QueryablesOutputType,
-    TileParams,
     bbox_query,
     datetime_query,
     filter_query,
-    function_parameters_query,
     ids_query,
     properties_filter_query,
     properties_query,
     sortby_query,
 )
-from tipg.errors import MissingGeometryColumn, NoPrimaryKey, NotFound
+from tipg.errors import NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
-from tipg.resources.response import GeoJSONResponse, SchemaJSONResponse
-from tipg.settings import FeaturesSettings, MVTSettings, TMSSettings
-
-from fastapi import APIRouter, Depends, Path, Query
-from fastapi.responses import ORJSONResponse
-
-from starlette.datastructures import QueryParams
-from starlette.requests import Request
-from starlette.responses import HTMLResponse, Response, StreamingResponse
-from starlette.routing import compile_path, replace_params
-from starlette.templating import Jinja2Templates, _TemplateResponse
-
-from tipg import factory
+from tipg.resources.response import GeoJSONResponse
+from tipg.settings import FeaturesSettings
 
 features_settings = FeaturesSettings()
 
 
 @dataclass
 class OGCFeaturesFactory(factory.OGCFeaturesFactory):
+    """Override /items and /item endpoints."""
 
-    def _items_route(self):
-
+    def _items_route(self):  # noqa: C901
         @self.router.get(
             "/collections/{collectionId}/items",
             response_class=GeoJSONResponse,
@@ -232,7 +212,10 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 query_params = QueryParams(
                     {**request.query_params, "offset": prev_token},
                 )
-                url = self.url_for(request, "items", collectionId=collection.id) + f"?{query_params}"
+                url = (
+                    self.url_for(request, "items", collectionId=collection.id)
+                    + f"?{query_params}"
+                )
 
                 links.append(
                     {
@@ -401,7 +384,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 # CSV Response
                 if output_type == MediaType.csv:
                     return StreamingResponse(
-                        create_csv_rows(rows),
+                        factory.create_csv_rows(rows),
                         media_type=MediaType.csv,
                         headers={
                             "Content-Disposition": "attachment;filename=items.csv"

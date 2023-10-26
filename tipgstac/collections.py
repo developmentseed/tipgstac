@@ -82,12 +82,7 @@ class PgSTACCollection(Collection):
         bbox_only: Optional[bool] = None,  # Not Available
         simplify: Optional[float] = None,  # Not Available
         geom_as_wkt: bool = False,  # Not Available
-    ) -> Tuple[
-        FeatureCollection,
-        Optional[int],
-        Optional[str],
-        Optional[str],
-    ]:
+    ) -> Tuple[FeatureCollection, Optional[int], Optional[str], Optional[str],]:
         """Build and run PgSTAC query."""
         if limit and limit > features_settings.max_features_per_query:
             raise InvalidLimit(
@@ -102,7 +97,7 @@ class PgSTACCollection(Collection):
             "bbox": bbox_filter,
             "datetime": datetime_filter,
             "limit": limit,
-            "token": token
+            "token": token,
         }
         if ids_filter:
             base_args["ids"] = ids_filter
