@@ -5,7 +5,6 @@ PgSTACCollection and PgSTACCatalog are custom class extending tipg.Collection an
 """
 
 import datetime
-import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from buildpg import asyncpg, render
@@ -16,6 +15,7 @@ from tipg.collections import Catalog, Collection, Column, FeatureCollection, Par
 from tipg.errors import InvalidLimit
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings
+from tipgstac.model import PgSTACSearch
 
 features_settings = FeaturesSettings()
 
@@ -99,26 +99,48 @@ class PgSTACCollection(Collection):
         base_args = {
             "collections": [self.id],
             "bbox": bbox_filter,
-            "datetime": datetime_filter,
-            "limit": limit,
+            "limit": limit or features_settings.default_features_limit,
             "token": token,
         }
         if ids_filter:
             base_args["ids"] = ids_filter
+
+        if cql_filter:
+            base_args["filter"] = cql_filter
+            base_args["filter-lang"] = "cql2-json"
+
+        if datetime_filter:
+            base_args["datetime"] = datetime_filter
+
+        # if sortby:
+        #     # https://github.com/radiantearth/stac-spec/tree/master/api-spec/extensions/sort#http-get-or-post-form
+        #     sort_param = []
+        #     for sort in sortby:
+        #         sortparts = re.match(r"^([+-]?)(.*)$", sort)
+        #         if sortparts:
+        #             sort_param.append(
+        #                 {
+        #                     "field": sortparts.group(2).strip(),
+        #                     "direction": "desc" if sortparts.group(1) == "-" else "asc",
+        #                 }
+        #             )
+        #     base_args["sortby"] = sort_param
+
+        if properties:
+            base_args["fields"] = {"include": set(properties), "exclude": {}}
 
         clean = {}
         for k, v in base_args.items():
             if v is not None and v != []:
                 clean[k] = v
 
-        # TODO: Translate other options
-
+        search = PgSTACSearch.model_validate(clean)
         async with pool.acquire() as conn:
             q, p = render(
                 """
-                SELECT * FROM search(:req::text::jsonb);
+                SELECT * FROM pgstac.search(:req::text::jsonb);
                 """,
-                req=json.dumps(clean),
+                req=search.json(exclude_none=True, by_alias=True),
             )
             fc = await conn.fetchval(q, *p)
 
