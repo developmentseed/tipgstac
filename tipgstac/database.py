@@ -1,4 +1,8 @@
-"""tipgstac.database: database events."""
+"""tipgstac.database.
+
+Simplified version of tipg.database because we will only connect to the PgSTAC schema.
+
+"""
 
 from typing import Optional
 

@@ -1,4 +1,8 @@
-"""tipgstac collections."""
+"""tipgstac collections.
+
+PgSTACCollection and PgSTACCatalog are custom class extending tipg.Collection and tipg.Catalog classes.
+
+"""
 
 import datetime
 import json

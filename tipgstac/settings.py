@@ -31,9 +31,6 @@ class CacheSettings(BaseSettings):
     # TTL of the cache in seconds
     ttl: int = 300
 
-    # Maximum size of the LRU cache in MB
-    maxsize: int = 512
-
     # Whether or not caching is enabled
     disable: bool = False
 
@@ -44,6 +41,5 @@ class CacheSettings(BaseSettings):
         """Check if cache is disabled."""
         if self.disable:
             self.ttl = 0
-            self.maxsize = 0
 
         return self

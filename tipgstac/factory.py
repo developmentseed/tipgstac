@@ -1,4 +1,32 @@
-"""Custom Factory."""
+"""Custom Factory.
+
+PgSTAC uses `token: str` instead of `offset: int` which means we have to overwrite the /items endpoint.
+
+PgSTAC returns `prev/next` token automatically so we forward them through the `PgSTACCollection.features` method, meaning we also had to update the `/item` endpoint
+
+```python
+# tipg
+items, matched_items = await collection.features(
+    pool=request.app.state.pool,
+    bbox_only=bbox_only,
+    simplify=simplify,
+    ids_filter=[itemId],
+    properties=properties,
+    geom_as_wkt=geom_as_wkt,
+)
+
+# tipgstac
+items, matched_items, next_token, prev_token = await collection.features(
+    pool=request.app.state.pool,
+    bbox_only=bbox_only,
+    simplify=simplify,
+    ids_filter=[itemId],
+    properties=properties,
+    geom_as_wkt=geom_as_wkt,
+)
+```
+
+"""
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional
