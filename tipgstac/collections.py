@@ -2,13 +2,13 @@
 
 import datetime
 import json
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import Any, Dict, List, Optional, Tuple
 
 from buildpg import asyncpg, render
 from pydantic import Field
 from pygeofilter.ast import AstType
 
-from tipg.collections import Collection, Column, FeatureCollection, Parameter
+from tipg.collections import Catalog, Collection, Column, FeatureCollection, Parameter
 from tipg.errors import InvalidLimit
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings
@@ -142,7 +142,7 @@ class PgSTACCollection(Collection):
         raise NotImplementedError
 
 
-class Catalog(TypedDict):
+class PgSTACCatalog(Catalog):
     """Collection Catalog."""
 
     collections: Dict[str, PgSTACCollection]
