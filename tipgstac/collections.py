@@ -3,16 +3,20 @@
 PgSTACCollection and PgSTACCatalog are custom class extending tipg.Collection and tipg.Catalog classes.
 
 """
-
 import datetime
+import json
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import unquote_plus
 
 from buildpg import asyncpg, render
+from ciso8601 import parse_rfc3339
+from fastapi import HTTPException
 from pydantic import Field
 from pygeofilter.ast import AstType
+from pygeofilter.backends.cql2_json import to_cql2
 
 from tipg.collections import Catalog, Collection, Column, FeatureCollection, Parameter
-from tipg.errors import InvalidLimit
+from tipg.errors import InvalidDatetime, InvalidLimit
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings
 from tipgstac.model import PgSTACSearch
@@ -70,7 +74,7 @@ class PgSTACCollection(Collection):
         """Return crs of set geometry column."""
         return "http://www.opengis.net/def/crs/EPSG/0/4326"
 
-    async def features(
+    async def features(  # noqa: C901
         self,
         pool: asyncpg.BuildPgPool,
         *,
@@ -79,6 +83,7 @@ class PgSTACCollection(Collection):
         datetime_filter: Optional[List[str]] = None,
         properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
+        query: Optional[str] = None,
         sortby: Optional[str] = None,
         properties: Optional[List[str]] = None,
         limit: Optional[int] = None,
@@ -94,19 +99,41 @@ class PgSTACCollection(Collection):
             )
 
         if datetime_filter:
+            if len(datetime_filter) == 2:
+                start = (
+                    parse_rfc3339(datetime_filter[0])
+                    if datetime_filter[0] not in ["..", ""]
+                    else None
+                )
+                end = (
+                    parse_rfc3339(datetime_filter[1])
+                    if datetime_filter[1] not in ["..", ""]
+                    else None
+                )
+
+                if start is None and end is None:
+                    raise InvalidDatetime(
+                        "Double open-ended datetime intervals are not allowed."
+                    )
+
+                if start is not None and end is not None and start > end:
+                    raise InvalidDatetime(
+                        "Start datetime cannot be before end datetime."
+                    )
+
             datetime_filter = "/".join(datetime_filter)  # type: ignore
 
         base_args = {
             "collections": [self.id],
+            "ids": ids_filter,
             "bbox": bbox_filter,
             "limit": limit or features_settings.default_features_limit,
             "token": token,
+            "query": json.loads(unquote_plus(query)) if query else query,
         }
-        if ids_filter:
-            base_args["ids"] = ids_filter
 
         if cql_filter:
-            base_args["filter"] = cql_filter
+            base_args["filter"] = json.loads(to_cql2(cql_filter))
             base_args["filter-lang"] = "cql2-json"
 
         if datetime_filter:
@@ -126,8 +153,10 @@ class PgSTACCollection(Collection):
         #             )
         #     base_args["sortby"] = sort_param
 
+        # TODO: properties_filter
+
         if properties:
-            base_args["fields"] = {"include": set(properties), "exclude": {}}
+            base_args["fields"] = {"include": set(properties), "exclude": set()}
 
         clean = {}
         for k, v in base_args.items():
@@ -135,14 +164,21 @@ class PgSTACCollection(Collection):
                 clean[k] = v
 
         search = PgSTACSearch.model_validate(clean)
-        async with pool.acquire() as conn:
-            q, p = render(
-                """
-                SELECT * FROM pgstac.search(:req::text::jsonb);
-                """,
-                req=search.model_dump_json(exclude_none=True, by_alias=True),
-            )
-            fc = await conn.fetchval(q, *p)
+        try:
+            async with pool.acquire() as conn:
+                q, p = render(
+                    """
+                    SELECT * FROM pgstac.search(:req::text::jsonb);
+                    """,
+                    req=search.model_dump_json(exclude_none=True, by_alias=True),
+                )
+                fc = await conn.fetchval(q, *p)
+        except Exception as e:
+            if "Could not find item using token:" in repr(e):
+                raise HTTPException(
+                    status_code=404, detail=f"Invalid toke: {token}."
+                ) from e
+            fc = {}
 
         count = None
         if context := fc.get("context"):
@@ -152,7 +188,9 @@ class PgSTACCollection(Collection):
         prev_token = fc.get("prev")
 
         return (
-            FeatureCollection(type="FeatureCollection", features=fc.get("features")),
+            FeatureCollection(
+                type="FeatureCollection", features=fc.get("features", [])
+            ),
             count,
             next_token,
             prev_token,

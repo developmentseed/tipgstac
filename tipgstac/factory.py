@@ -91,6 +91,12 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             properties: Annotated[Optional[List[str]], Depends(properties_query)],
             cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
             sortby: Annotated[Optional[str], Depends(sortby_query)],
+            query: Annotated[
+                Optional[str],
+                Query(
+                    description="Additional filtering based on the properties of Item objects."
+                ),
+            ] = None,
             limit: Annotated[
                 int,
                 Query(
@@ -143,6 +149,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 bbox_only=bbox_only,
                 simplify=simplify,
                 geom_as_wkt=geom_as_wkt,
+                query=query,
             )
 
             if output_type in (
