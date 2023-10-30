@@ -26,7 +26,7 @@ class PgSTACCollection(Collection):
     type: str
     id: str
     table: str
-    dbschema: str = Field(..., alias="schema")
+    dbschema: str = Field(alias="schema")
     title: Optional[str] = None
     description: Optional[str] = None
     properties: List[Column] = []
@@ -140,7 +140,7 @@ class PgSTACCollection(Collection):
                 """
                 SELECT * FROM pgstac.search(:req::text::jsonb);
                 """,
-                req=search.json(exclude_none=True, by_alias=True),
+                req=search.model_dump_json(exclude_none=True, by_alias=True),
             )
             fc = await conn.fetchval(q, *p)
 

@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Literal, Optional, Set
 from geojson_pydantic.geometries import Geometry
 from geojson_pydantic.types import BBox
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from typing_extensions import Annotated
 
 # ref: https://github.com/stac-api-extensions/query
 # TODO: add "startsWith", "endsWith", "contains", "in"
@@ -30,7 +31,7 @@ class PgSTACSearch(BaseModel):
     datetime: Optional[str] = None
     sortby: Optional[Any] = None
     fields: Optional[Dict[str, Set]] = None
-    filter_lang: Optional[FilterLang] = Field(default=None, alias="filter-lang")
+    filter_lang: Annotated[Optional[FilterLang], Field(alias="filter-lang")] = None
     limit: Optional[int] = None
 
     model_config = {"extra": "allow"}
