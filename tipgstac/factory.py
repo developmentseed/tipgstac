@@ -48,7 +48,6 @@ from tipg.dependencies import (
     datetime_query,
     filter_query,
     ids_query,
-    properties_filter_query,
     properties_query,
     sortby_query,
 )
@@ -91,6 +90,12 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             properties: Annotated[Optional[List[str]], Depends(properties_query)],
             cql_filter: Annotated[Optional[AstType], Depends(filter_query)],
             sortby: Annotated[Optional[str], Depends(sortby_query)],
+            query: Annotated[
+                Optional[str],
+                Query(
+                    description="Additional filtering based on the properties of Item objects."
+                ),
+            ] = None,
             limit: Annotated[
                 int,
                 Query(
@@ -134,7 +139,6 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
-                properties_filter=properties_filter_query(request, collection),
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
@@ -143,6 +147,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 bbox_only=bbox_only,
                 simplify=simplify,
                 geom_as_wkt=geom_as_wkt,
+                query=query,
             )
 
             if output_type in (

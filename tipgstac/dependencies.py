@@ -5,7 +5,7 @@ from typing import Dict, Optional
 
 from aiocache import cached
 from buildpg import render
-from fastapi import Path, Query
+from fastapi import HTTPException, Path, Query
 from starlette.requests import Request
 from typing_extensions import Annotated
 
@@ -108,7 +108,16 @@ async def CollectionParams(
             """,
             id=collectionId,
         )
-        collection = await conn.fetchval(q, *p)
+        try:
+            collection = await conn.fetchval(q, *p)
+        except Exception:  # TODO: better error handling
+            collection = None
+            pass
+
+        if not collection:
+            raise HTTPException(
+                status_code=404, detail=f"Collection '{collectionId}' not found."
+            )
 
         queryables = None
         if collection.get("queryables"):
