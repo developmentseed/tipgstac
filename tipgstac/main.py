@@ -13,7 +13,6 @@ from tipg.middleware import CacheControlMiddleware
 from tipg.settings import PostgresSettings
 from tipgstac import __version__ as tipg_version
 from tipgstac.database import close_db_connection, connect_to_db
-from tipgstac.dependencies import CatalogParams, CollectionParams
 from tipgstac.factory import OGCFeaturesFactory
 from tipgstac.settings import APISettings
 
@@ -50,12 +49,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-ogc_api = OGCFeaturesFactory(
-    title=settings.name,
-    catalog_dependency=CatalogParams,
-    collection_dependency=CollectionParams,
-    templates=templates,
-)
+ogc_api = OGCFeaturesFactory(title=settings.name, templates=templates)
 app.include_router(ogc_api.router)
 
 # Set all CORS enabled origins

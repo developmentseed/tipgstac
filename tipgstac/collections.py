@@ -6,7 +6,7 @@ PgSTACCollection and PgSTACCatalog are custom class extending tipg.Collection an
 import datetime
 import json
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, TypedDict
 from urllib.parse import unquote_plus
 
 from buildpg import asyncpg, render
@@ -16,7 +16,7 @@ from pydantic import Field
 from pygeofilter.ast import AstType
 from pygeofilter.backends.cql2_json import to_cql2
 
-from tipg.collections import Catalog, Collection, Column, FeatureCollection, Parameter
+from tipg.collections import Collection, Column, ItemList, Parameter
 from tipg.errors import InvalidDatetime, InvalidLimit
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings
@@ -91,7 +91,8 @@ class PgSTACCollection(Collection):
         bbox_only: Optional[bool] = None,  # Not Available
         simplify: Optional[float] = None,  # Not Available
         geom_as_wkt: bool = False,  # Not Available
-    ) -> Tuple[FeatureCollection, Optional[int], Optional[str], Optional[str],]:
+        **kwargs: Any,  # Not Used
+    ) -> ItemList:
         """Build and run PgSTAC query."""
         if limit and limit > features_settings.max_features_per_query:
             raise InvalidLimit(
@@ -180,20 +181,18 @@ class PgSTACCollection(Collection):
                 ) from e
             fc = {}
 
-        count = None
+        matched = None
         if context := fc.get("context"):
-            count = context.get("matched")
+            matched = context.get("matched")
 
         next_token = fc.get("next")
         prev_token = fc.get("prev")
 
-        return (
-            FeatureCollection(
-                type="FeatureCollection", features=fc.get("features", [])
-            ),
-            count,
-            next_token,
-            prev_token,
+        return ItemList(  # type: ignore
+            items=fc.get("features", []),
+            matched=matched,
+            next=next_token,
+            prev=prev_token,
         )
 
     async def get_tile(
@@ -206,8 +205,17 @@ class PgSTACCollection(Collection):
         raise NotImplementedError
 
 
-class PgSTACCatalog(Catalog):
+class PgSTACCatalog(TypedDict):
     """Collection Catalog."""
 
     collections: Dict[str, PgSTACCollection]
     last_updated: datetime.datetime
+
+
+class CollectionList(TypedDict):
+    """Collections."""
+
+    collections: List[PgSTACCollection]
+    matched: Optional[int]
+    next: Optional[int]
+    prev: Optional[int]

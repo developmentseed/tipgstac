@@ -1,7 +1,6 @@
 """tipgstac dependencies."""
 
-import datetime
-from typing import Dict, Optional
+from typing import List, Optional
 
 from aiocache import cached
 from buildpg import render
@@ -9,7 +8,7 @@ from fastapi import HTTPException, Path, Query
 from starlette.requests import Request
 from typing_extensions import Annotated
 
-from tipgstac.collections import PgSTACCatalog, PgSTACCollection
+from tipgstac.collections import CollectionList, PgSTACCollection
 from tipgstac.settings import CacheSettings
 
 cache_config = CacheSettings()
@@ -39,12 +38,12 @@ async def CatalogParams(
             description="Starts the response at an offset.",
         ),
     ] = None,
-) -> PgSTACCatalog:
+) -> CollectionList:
     """Return Collections Catalog."""
     limit = limit or 10  # add collection limit settings
     offset = offset or 0
 
-    collections: Dict[str, PgSTACCollection] = {}
+    collections: List[PgSTACCollection] = []
 
     async with request.app.state.pool.acquire() as conn:
         matched = await conn.fetchval("SELECT count(*) FROM pgstac.collections;")
@@ -59,24 +58,24 @@ async def CatalogParams(
             if not collection:
                 continue
 
-            collection_id = collection["id"]
-            collections[collection_id] = PgSTACCollection(
-                type="Collection",
-                id=collection_id,
-                table="collections",
-                schema="pgstac",
-                extent=collection.get("extent"),
-                description=collection.get("description", None),
-                id_column="id",
-                stac_version=collection.get("stac_version"),
-                stac_extensions=collection.get("stac_extensions", []),
+            collections.append(
+                PgSTACCollection(
+                    type="Collection",
+                    id=collection["id"],
+                    table="collections",
+                    schema="pgstac",
+                    extent=collection.get("extent"),
+                    description=collection.get("description", None),
+                    id_column="id",
+                    stac_version=collection.get("stac_version"),
+                    stac_extensions=collection.get("stac_extensions", []),
+                ),
             )
 
         returned = len(collections)
 
-        return PgSTACCatalog(
+        return CollectionList(
             collections=collections,
-            last_updated=datetime.datetime.now(),
             matched=matched,
             next=offset + returned if matched - returned > offset else None,
             prev=max(offset - returned, 0) if offset else None,
