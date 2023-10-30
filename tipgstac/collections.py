@@ -5,6 +5,7 @@ PgSTACCollection and PgSTACCatalog are custom class extending tipg.Collection an
 """
 import datetime
 import json
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import unquote_plus
 
@@ -81,7 +82,6 @@ class PgSTACCollection(Collection):
         ids_filter: Optional[List[str]] = None,
         bbox_filter: Optional[List[float]] = None,
         datetime_filter: Optional[List[str]] = None,
-        properties_filter: Optional[List[Tuple[str, str]]] = None,
         cql_filter: Optional[AstType] = None,
         query: Optional[str] = None,
         sortby: Optional[str] = None,
@@ -139,21 +139,21 @@ class PgSTACCollection(Collection):
         if datetime_filter:
             base_args["datetime"] = datetime_filter
 
-        # if sortby:
-        #     # https://github.com/radiantearth/stac-spec/tree/master/api-spec/extensions/sort#http-get-or-post-form
-        #     sort_param = []
-        #     for sort in sortby:
-        #         sortparts = re.match(r"^([+-]?)(.*)$", sort)
-        #         if sortparts:
-        #             sort_param.append(
-        #                 {
-        #                     "field": sortparts.group(2).strip(),
-        #                     "direction": "desc" if sortparts.group(1) == "-" else "asc",
-        #                 }
-        #             )
-        #     base_args["sortby"] = sort_param
+        if sortby:
+            sort_param = []
+            for s in sortby.strip().split(","):
+                if part := re.match("^(?P<direction>[+-]?)(?P<prop>.*)$", s):
+                    parts = part.groupdict()
+                    direction = parts["direction"]
+                    prop = parts["prop"].strip()
+                    sort_param.append(
+                        {
+                            "field": prop,
+                            "direction": "desc" if direction == "-" else "asc",
+                        }
+                    )
 
-        # TODO: properties_filter
+            base_args["sortby"] = sort_param
 
         if properties:
             base_args["fields"] = {"include": set(properties), "exclude": set()}

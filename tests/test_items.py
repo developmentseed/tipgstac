@@ -125,63 +125,6 @@ def test_items_ids(app):
     assert body["features"][1]["id"] == "20200307aC0853430w361030"
 
 
-# def test_items_properties_filter(app):
-#     """Test /items endpoint with properties filter options."""
-#     response = app.get("/collections/public.landsat_wrs/items?path=13")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert len(body["features"]) == 10
-#     assert body["numberMatched"] == 104
-#     assert body["numberReturned"] == 10
-#     assert body["features"][0]["properties"]["path"] == 13
-#     Items.model_validate(body)
-
-#     # invalid type (str instead of int)
-#     response = app.get("/collections/public.landsat_wrs/items?path=d")
-#     assert response.status_code == 500
-#     assert "invalid input syntax for type integer" in response.json()["detail"]
-
-#     response = app.get("/collections/public.landsat_wrs/items?path=13&row=10")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert len(body["features"]) == 1
-#     assert body["numberMatched"] == 1
-#     assert body["numberReturned"] == 1
-#     assert body["features"][0]["properties"]["path"] == 13
-#     assert body["features"][0]["properties"]["row"] == 10
-#     Items.model_validate(body)
-
-#     response = app.get("/collections/public.landsat_wrs/items?pr=013001")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert len(body["features"]) == 1
-#     assert body["numberMatched"] == 1
-#     assert body["numberReturned"] == 1
-#     assert body["features"][0]["properties"]["path"] == 13
-#     assert body["features"][0]["properties"]["row"] == 1
-#     Items.model_validate(body)
-
-#     response = app.get("/collections/public.landsat_wrs/items?path=1000000")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert len(body["features"]) == 0
-#     assert body["numberMatched"] == 0
-#     assert body["numberReturned"] == 0
-#     Items.model_validate(body)
-
-#     # We exclude invalid properties (not matching any collection column.) so they have no effects
-#     response = app.get("/collections/public.landsat_wrs/items?token=mysecrettoken")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert len(body["features"]) == 10
-#     Items.model_validate(body)
-
-
 def test_items_filter_cql_properties(app):
     """Test /items endpoint with cql filter options."""
     filter_query = {
@@ -446,60 +389,48 @@ def test_output_response_type(app):
     assert len(body) == 10
 
 
-# def test_items_sortby(app):
-#     """Test /items endpoint with sortby options."""
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert body["features"][0]["properties"]["ogc_fid"] == 1
-#     assert body["numberMatched"] == 16269
-#     Items.model_validate(body)
+def test_items_sortby(app):
+    """Test /items endpoint with sortby options."""
+    response = app.get(
+        "/collections/noaa-emergency-response/items?limit=1&sortby=datetime"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["features"][0]["properties"]["datetime"] == "2020-03-06T00:00:00Z"
+    assert body["numberMatched"] == 20
 
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=ogc_fid")
-#     assert response.status_code == 200
-#     assert response.headers["content-type"] == "application/geo+json"
-#     body = response.json()
-#     assert body["features"][0]["properties"]["ogc_fid"] == 1
-#     assert body["numberMatched"] == 16269
-#     Items.model_validate(body)
+    response = app.get(
+        "/collections/noaa-emergency-response/items?limit=1&sortby=+datetime"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert body["features"][0]["properties"]["datetime"] == "2020-03-06T00:00:00Z"
+    assert body["numberMatched"] == 20
 
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=row")
-#     assert response.status_code == 200
-#     body = response.json()
-#     assert body["features"][0]["properties"]["row"] == 1
-#     assert body["numberMatched"] == 16269
-#     Items.model_validate(body)
+    response = app.get(
+        "/collections/noaa-emergency-response/items?limit=1&sortby=-datetime"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["datetime"] == "2020-03-07T00:00:00Z"
+    assert body["numberMatched"] == 20
 
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=+row")
-#     assert response.status_code == 200
-#     body = response.json()
-#     assert body["features"][0]["properties"]["row"] == 1
-#     Items.model_validate(body)
+    response = app.get(
+        "/collections/noaa-emergency-response/items?limit=1&sortby=datetime,event"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["features"][0]["properties"]["datetime"] == "2020-03-06T00:00:00Z"
 
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row")
-#     assert response.status_code == 200
-#     body = response.json()
-#     assert body["features"][0]["properties"]["row"] == 248
-#     Items.model_validate(body)
-
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=-row,path")
-#     assert response.status_code == 200
-#     body = response.json()
-#     assert body["features"][0]["properties"]["row"] == 248
-#     assert body["features"][0]["properties"]["path"] == 1
-#     Items.model_validate(body)
-
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=path,-row")
-#     assert response.status_code == 200
-#     body = response.json()
-#     assert body["features"][0]["properties"]["row"] == 248
-#     assert body["features"][0]["properties"]["path"] == 1
-#     Items.model_validate(body)
-
-#     # Invalid column name
-#     response = app.get("/collections/public.landsat_wrs/items?limit=1&sortby=something")
-#     assert response.status_code == 404
+    # Invalid column name
+    response = app.get(
+        "/collections/noaa-emergency-response/items?limit=1&sortby=something"
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["numberMatched"] == 20
 
 
 def test_item(app):

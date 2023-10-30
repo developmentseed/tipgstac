@@ -48,7 +48,6 @@ from tipg.dependencies import (
     datetime_query,
     filter_query,
     ids_query,
-    properties_filter_query,
     properties_query,
     sortby_query,
 )
@@ -140,7 +139,6 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 ids_filter=ids_filter,
                 bbox_filter=bbox_filter,
                 datetime_filter=datetime_filter,
-                properties_filter=properties_filter_query(request, collection),
                 cql_filter=cql_filter,
                 sortby=sortby,
                 properties=properties,
