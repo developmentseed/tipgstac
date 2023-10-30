@@ -20,13 +20,14 @@ test_db = pytest_pgsql.TransactedPostgreSQLTestDB.create_fixture(
 
 
 @pytest.fixture(scope="session")
-def database_url(test_db):
+def database_url(test_db) -> str:
     """
     Session scoped fixture to launch a postgresql database in a separate process.  We use psycopg2 to ingest test data
     because pytest-asyncio event loop is a function scoped fixture and cannot be called within the current scope.  Yields
     a database url which we pass to our application through a monkeypatched environment variable.
     """
-    with PgstacDB(dsn=str(test_db.connection.engine.url)) as db:
+    db_url = str(test_db.connection.engine.url)
+    with PgstacDB(dsn=db_url) as db:
         print("Running to PgSTAC migration...")
         migrator = Migrate(db)
         version = migrator.run_migration()
@@ -40,7 +41,7 @@ def database_url(test_db):
         loader.load_items(items)
 
     # Make sure we have 1 collection and 163 items in pgstac
-    with psycopg.connect(str(test_db.connection.engine.url)) as conn:
+    with psycopg.connect(db_url) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM pgstac.collections")
             val = cur.fetchone()[0]
@@ -57,7 +58,7 @@ def database_url(test_db):
             ON CONFLICT ON CONSTRAINT pgstac_settings_pkey DO UPDATE SET value = excluded.value;"""
             cur.execute(pgstac_settings)
 
-    return test_db.connection.engine.url
+    return db_url
 
 
 @pytest.fixture(autouse=True)
@@ -65,7 +66,7 @@ def app(database_url, monkeypatch):
     """Create app with connection to the pytest database."""
     monkeypatch.setenv("TIPG_PGSTAC_CACHE_DISABLE", "TRUE")
 
-    monkeypatch.setenv("DATABASE_URL", str(database_url))
+    monkeypatch.setenv("DATABASE_URL", database_url)
 
     from tipgstac.main import app
 

@@ -40,6 +40,7 @@ test = [
     "psycopg2",
     "sqlalchemy>=1.1,<1.4",
     "pypgstac==0.8.1",
+    "psycopg[binary,pool]",
 ]
 dev = [
     "pre-commit",
@@ -54,6 +55,10 @@ Documentation = "https://developmentseed.org/tipg-stac/"
 Issues = "https://github.com/developmentseed/tipg-stac/issues"
 Source = "https://github.com/developmentseed/tipg-stac"
 Changelog = "https://developmentseed.org/tipg-stac/release-notes/"
+
+# While we use TIPG github
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 path = "tipgstac/__init__.py"
