@@ -25,7 +25,7 @@ classifiers = [
 dynamic = ["version"]
 dependencies = [
     # "tipg ",
-    "tipg @ git+https://github.com/developmentseed/tipg.git@refactorCatalogParams",
+    "tipg @ git+https://github.com/developmentseed/tipg.git",
     "aiocache",
 ]
 

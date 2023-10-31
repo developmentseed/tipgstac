@@ -18,7 +18,7 @@ cache_config = CacheSettings()
     ttl=cache_config.ttl,
     key_builder=lambda _f, request, limit, offset: f"catalog-limit:{limit or 0}-offset:{offset or 0}",
 )
-async def CatalogParams(
+async def CollectionsParams(
     request: Request,
     # TODO
     # bbox_filter: Annotated[Optional[List[float]], Depends(bbox_query)],

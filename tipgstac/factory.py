@@ -30,7 +30,7 @@ from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse
 from tipg.settings import FeaturesSettings
 from tipgstac.collections import CollectionList, PgSTACCollection
-from tipgstac.dependencies import CatalogParams, CollectionParams
+from tipgstac.dependencies import CollectionParams, CollectionsParams
 
 features_settings = FeaturesSettings()
 
@@ -40,7 +40,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
     """Override /items and /item endpoints."""
 
     collection_dependency: Callable[..., PgSTACCollection] = CollectionParams
-    catalog_dependency: Callable[..., CollectionList] = CatalogParams
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams
 
     def _items_route(self):  # noqa: C901
         @self.router.get(
