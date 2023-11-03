@@ -4,6 +4,15 @@
   <p align="center">A PgSTAC Backend for TiPG.</p>
 </p>
 
+<p align="center">
+  <a href="https://github.com/developmentseed/tipgstac/actions?query=workflow%3ACI" target="_blank">
+      <img src="https://github.com/developmentseed/titiler/workflows/CI/badge.svg" alt="Test">
+  </a>
+  <a href="https://github.com/developmentseed/tipgstac/blob/main/LICENSE" target="_blank">
+      <img src="https://img.shields.io/github/license/developmentseed/tipgstac.svg" alt="License">
+  </a>
+</p>
+
 
 ---
 
