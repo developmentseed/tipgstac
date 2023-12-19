@@ -6,7 +6,6 @@ PgSTAC uses `token: str` instead of `offset: int` which means we have to overwri
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-import orjson
 from fastapi import Depends, Path, Query
 from fastapi.responses import ORJSONResponse
 from pygeofilter.ast import AstType
@@ -27,7 +26,7 @@ from tipg.dependencies import (
 )
 from tipg.errors import NoPrimaryKey, NotFound
 from tipg.resources.enums import MediaType
-from tipg.resources.response import GeoJSONResponse
+from tipg.resources.response import GeoJSONResponse, orjsonDumps
 from tipg.settings import FeaturesSettings
 from tipgstac.collections import CollectionList, PgSTACCollection
 from tipgstac.dependencies import CollectionParams, CollectionsParams
@@ -59,6 +58,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                     "model": model.Items,
                 },
             },
+            tags=["OGC Features API"],
         )
         async def items(  # noqa: C901
             request: Request,
@@ -167,7 +167,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -216,7 +216,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 qp.pop("offset")
                 query_params = QueryParams({**qp, "offset": prev_token})
                 url = self.url_for(request, "items", collectionId=collection.id)
-                if qp:
+                if query_params:
                     url += f"?{query_params}"
 
                 links.append(
@@ -272,13 +272,13 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             # HTML Response
             if output_type == MediaType.html:
                 return self._create_html_response(
-                    request, orjson.dumps(data).decode(), template_name="items"
+                    request, orjsonDumps(data).decode(), template_name="items"
                 )
 
             # GeoJSONSeq Response
             elif output_type == MediaType.geojsonseq:
                 return StreamingResponse(
-                    (orjson.dumps(f) + b"\n" for f in data["features"]),  # type: ignore
+                    (orjsonDumps(f) + b"\n" for f in data["features"]),  # type: ignore
                     media_type=MediaType.geojsonseq,
                     headers={
                         "Content-Disposition": "attachment;filename=items.geojson"
@@ -305,6 +305,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                     "model": model.Item,
                 },
             },
+            tags=["OGC Features API"],
         )
         async def item(
             request: Request,
@@ -387,7 +388,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 # NDJSON Response
                 if output_type == MediaType.ndjson:
                     return StreamingResponse(
-                        (orjson.dumps(row) + b"\n" for row in rows),
+                        (orjsonDumps(row) + b"\n" for row in rows),
                         media_type=MediaType.ndjson,
                         headers={
                             "Content-Disposition": "attachment;filename=items.ndjson"
@@ -421,7 +422,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             if output_type == MediaType.html:
                 return self._create_html_response(
                     request,
-                    orjson.dumps(data).decode(),
+                    orjsonDumps(data).decode(),
                     template_name="item",
                 )
 

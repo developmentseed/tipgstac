@@ -15,8 +15,6 @@ class APISettings(BaseSettings):
     cachecontrol: str = "public, max-age=3600"
     template_directory: Optional[str] = None
 
-    # catalog_ttl: int = 300
-
     model_config = {"env_prefix": "TIPG_STAC_", "env_file": ".env", "extra": "ignore"}
 
     @field_validator("cors_origins")

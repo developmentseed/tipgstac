@@ -78,7 +78,7 @@ async def CollectionsParams(
             collections=collections,
             matched=matched,
             next=offset + returned if matched - returned > offset else None,
-            prev=max(offset - returned, 0) if offset else None,
+            prev=max(offset - limit, 0) if offset else None,
         )
 
 
