@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Literal, Optional, Set
 
 from geojson_pydantic.geometries import Geometry
 from geojson_pydantic.types import BBox
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from typing_extensions import Annotated
 
 # ref: https://github.com/stac-api-extensions/query
@@ -33,18 +33,9 @@ class PgSTACSearch(BaseModel):
     fields: Optional[Dict[str, Set]] = None
     filter_lang: Annotated[Optional[FilterLang], Field(alias="filter-lang")] = None
     limit: Optional[int] = None
+    token: Optional[str] = None
 
-    model_config = {"extra": "allow"}
-
-    @model_validator(mode="before")
-    def validate_query_fields(cls, values: Dict) -> Dict:
-        """Pgstac does not require the base validator for query fields."""
-        return values
-
-    @field_validator("datetime")
-    def validate_datetime(cls, v):
-        """Pgstac does not require the base validator for datetime."""
-        return v
+    model_config = {"extra": "ignore"}
 
     @field_validator("intersects")
     def validate_spatial(cls, v: Optional[Geometry], info: ValidationInfo):

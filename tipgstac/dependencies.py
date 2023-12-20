@@ -14,6 +14,15 @@ from tipgstac.settings import CacheSettings
 cache_config = CacheSettings()
 
 
+def collections_query(
+    collections: Annotated[
+        Optional[str], Query(description="Filter by Collections.")
+    ] = None,
+) -> Optional[List[str]]:
+    """Collections dependency."""
+    return collections.split(",") if collections else None
+
+
 @cached(
     ttl=cache_config.ttl,
     key_builder=lambda _f, request, limit, offset: f"catalog-limit:{limit or 0}-offset:{offset or 0}",

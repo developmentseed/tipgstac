@@ -25,6 +25,46 @@ from tipgstac.model import PgSTACSearch
 features_settings = FeaturesSettings()
 
 
+async def pgstac_search(  # noqa: C901
+    pool: asyncpg.BuildPgPool,
+    *,
+    search: PgSTACSearch,
+) -> ItemList:
+    """Build and run PgSTAC query."""
+    if search.limit and search.limit > features_settings.max_features_per_query:
+        raise InvalidLimit(
+            f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
+        )
+
+    try:
+        async with pool.acquire() as conn:
+            q, p = render(
+                """
+                SELECT * FROM pgstac.search(:req::text::jsonb);
+                """,
+                req=search.model_dump_json(exclude_none=True, by_alias=True),
+            )
+            fc = await conn.fetchval(q, *p)
+
+    except Exception as e:
+        if "Could not find item using token:" in repr(e):
+            raise HTTPException(
+                status_code=404, detail=f"Invalid toke: {search.token}."
+            ) from e
+        fc = {}
+
+    matched = None
+    if context := fc.get("context"):
+        matched = context.get("matched")
+
+    return ItemList(  # type: ignore
+        items=fc.get("features", []),
+        matched=matched,
+        next=fc.get("next"),
+        prev=fc.get("prev"),
+    )
+
+
 class PgSTACCollection(Collection):
     """Model for DB Table and Function."""
 
@@ -94,11 +134,6 @@ class PgSTACCollection(Collection):
         **kwargs: Any,  # Not Used
     ) -> ItemList:
         """Build and run PgSTAC query."""
-        if limit and limit > features_settings.max_features_per_query:
-            raise InvalidLimit(
-                f"Limit can not be set higher than the `tipg_max_features_per_query` setting of {features_settings.max_features_per_query}"
-            )
-
         if datetime_filter:
             if len(datetime_filter) == 2:
                 start = (
@@ -165,35 +200,7 @@ class PgSTACCollection(Collection):
                 clean[k] = v
 
         search = PgSTACSearch.model_validate(clean)
-        try:
-            async with pool.acquire() as conn:
-                q, p = render(
-                    """
-                    SELECT * FROM pgstac.search(:req::text::jsonb);
-                    """,
-                    req=search.model_dump_json(exclude_none=True, by_alias=True),
-                )
-                fc = await conn.fetchval(q, *p)
-        except Exception as e:
-            if "Could not find item using token:" in repr(e):
-                raise HTTPException(
-                    status_code=404, detail=f"Invalid toke: {token}."
-                ) from e
-            fc = {}
-
-        matched = None
-        if context := fc.get("context"):
-            matched = context.get("matched")
-
-        next_token = fc.get("next")
-        prev_token = fc.get("prev")
-
-        return ItemList(  # type: ignore
-            items=fc.get("features", []),
-            matched=matched,
-            next=next_token,
-            prev=prev_token,
-        )
+        return await pgstac_search(pool=pool, search=search)
 
     async def get_tile(
         self,
