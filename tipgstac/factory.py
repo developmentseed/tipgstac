@@ -52,6 +52,21 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
         super().register_routes()
         self._searches_routes()
 
+    def links(self, request: Request) -> List[model.Link]:
+        """add more links."""
+        return [
+            *super().links(request),
+            model.Link(
+                title="Search (GET)",
+                href=self.url_for(
+                    request,
+                    "get_search",
+                ),
+                type=MediaType.geojson,
+                rel="data",
+            ),
+        ]
+
     def _items_route(self):  # noqa: C901
         @self.router.get(
             "/collections/{collectionId}/items",
