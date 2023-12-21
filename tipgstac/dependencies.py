@@ -1,6 +1,6 @@
 """tipgstac dependencies."""
 
-from typing import List, Optional
+from typing import List, Literal, Optional, get_args
 
 from aiocache import cached
 from buildpg import render
@@ -8,10 +8,40 @@ from fastapi import HTTPException, Path, Query
 from starlette.requests import Request
 from typing_extensions import Annotated
 
+from tipg.dependencies import accept_media_type
+from tipg.resources.enums import MediaType
 from tipgstac.collections import CollectionList, PgSTACCollection
 from tipgstac.settings import CacheSettings
 
 cache_config = CacheSettings()
+
+PostSearchResponseType = Literal["geojson", "json", "csv", "geojsonseq", "ndjson"]
+
+
+def collections_query(
+    collections: Annotated[
+        Optional[str], Query(description="Filter by Collections.")
+    ] = None,
+) -> Optional[List[str]]:
+    """Collections dependency."""
+    return collections.split(",") if collections else None
+
+
+def PostSearchOutputType(
+    request: Request,
+    f: Annotated[
+        Optional[PostSearchResponseType],
+        Query(
+            description="Response MediaType. Defaults to endpoint's default or value defined in `accept` header."
+        ),
+    ] = None,
+) -> Optional[MediaType]:
+    """Output MediaType: geojson, json, csv, geojsonseq, ndjson."""
+    if f:
+        return MediaType[f]
+
+    accepted_media = [MediaType[v] for v in get_args(PostSearchResponseType)]
+    return accept_media_type(request.headers.get("accept", ""), accepted_media)
 
 
 @cached(

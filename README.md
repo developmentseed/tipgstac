@@ -44,6 +44,16 @@ An example of a `.env` file can be found in [.env.example](https://github.com/de
 DATABASE_URL=postgresql://username:password@0.0.0.0:5432/postgis
 ```
 
+### PgSTAC Configuration
+
+By default, pgstac does not have the `context` extension enabled (ability to return number of matched items). To enable this you'll need to access the database and run this:
+
+```sql
+INSERT INTO pgstac_settings (name, value)
+VALUES ('context', 'on')
+ON CONFLICT ON CONSTRAINT pgstac_settings_pkey DO UPDATE SET value = excluded.value;
+```
+
 ## Launch
 
 ```bash
