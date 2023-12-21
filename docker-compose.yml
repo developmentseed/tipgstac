@@ -48,8 +48,13 @@ services:
     volumes:
       - ./dockerfiles/scripts:/tmp/scripts
 
+  # After launching the database, user might want to enable the `context` extension in pgstac
+  # INSERT INTO pgstac_settings (name, value)
+  # VALUES ('context', 'on')
+  # ON CONFLICT ON CONSTRAINT pgstac_settings_pkey DO UPDATE SET value = excluded.value;
   database:
-    image: ghcr.io/stac-utils/pgstac:v0.8.1
+    image: ghcr.io/stac-utils/pgstac:v0.8.2
+    platform: linux/amd64
     environment:
       - POSTGRES_USER=username
       - POSTGRES_PASSWORD=password

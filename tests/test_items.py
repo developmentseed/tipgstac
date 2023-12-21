@@ -155,23 +155,24 @@ def test_items_filter_cql_properties(app):
     assert body["features"][0]["properties"]["name"] == "20200307aC0852830w361200"
 
 
-# The properties= options isn't working with PgSTAC
-# def test_items_properties(app):
-#     """Test /items endpoint with properties options."""
-#     # NOTE: This should work!!! maybe a pgstac bug
-#     # response = app.get("/collections/noaa-emergency-response/items?properties=name")
-#     # assert response.status_code == 200
-#     # assert response.headers["content-type"] == "application/geo+json"
-#     # body = response.json()
-#     # assert ["name"] == list(body["features"][0]["properties"])
+def test_items_properties(app):
+    """Test /items endpoint with properties options."""
+    # NOTE: This should work!!! maybe a pgstac bug
+    response = app.get(
+        "/collections/noaa-emergency-response/items?properties=properties.name"
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    assert ["name"] == list(body["features"][0]["properties"])
 
-#     # no properties
-#     # response = app.get("/collections/noaa-emergency-response/items?properties=")
-#     # assert response.status_code == 200
-#     # assert response.headers["content-type"] == "application/geo+json"
-#     # body = response.json()
-#     # # NOTE: in tipg we return `properties={}`
-#     # assert not list(body["features"][0]["properties"])
+    # no properties
+    response = app.get("/collections/noaa-emergency-response/items?properties=")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/geo+json"
+    body = response.json()
+    # NOTE: in tipg we return `properties={}`
+    assert "properties" not in body["features"][0]
 
 
 def test_items_datetime(app):

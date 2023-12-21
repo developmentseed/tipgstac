@@ -128,10 +128,6 @@ class PgSTACCollection(Collection):
         properties: Optional[List[str]] = None,
         limit: Optional[int] = None,
         token: Optional[str] = None,
-        bbox_only: Optional[bool] = None,  # Not Available
-        simplify: Optional[float] = None,  # Not Available
-        geom_as_wkt: bool = False,  # Not Available
-        **kwargs: Any,  # Not Used
     ) -> ItemList:
         """Build and run PgSTAC query."""
         if datetime_filter:

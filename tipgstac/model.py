@@ -11,6 +11,8 @@ from geojson_pydantic.types import BBox
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from typing_extensions import Annotated
 
+from tipg import model
+
 # ref: https://github.com/stac-api-extensions/query
 # TODO: add "startsWith", "endsWith", "contains", "in"
 Operator = Literal["eq", "neq", "lt", "lte", "gt", "gte"]
@@ -74,3 +76,47 @@ class PgSTACSearch(BaseModel):
                 raise ValueError("Bounding box must be within (-180, -90, 180, 90)")
 
         return v
+
+
+class PostLink(model.Link):
+    """Custom Link model for POST responses.
+
+    Ref: https://github.com/opengeospatial/ogcapi-tiles/blob/master/openapi/schemas/common-core/link.yaml
+
+    Code generated using https://github.com/koxudaxi/datamodel-code-generator/
+    """
+
+    body: Annotated[
+        Dict,
+        Field(
+            description="Supplies the body parameter for Post request.",
+            example={"token": "a"},
+        ),
+    ]
+
+    model_config = {"use_enum_values": True}
+
+
+class PostItems(model.FeatureCollection):
+    """Items model for POST endpoint
+
+    Ref: http://schemas.opengis.net/ogcapi/features/part1/1.0/openapi/schemas/featureCollectionGeoJSON.yaml
+
+    """
+
+    id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    features: List[model.Item]
+    links: Optional[List[PostLink]] = None
+    timeStamp: Optional[str] = None
+    numberMatched: Optional[int] = None
+    numberReturned: Optional[int] = None
+
+    model_config = {"arbitrary_types_allowed": True}
+
+    def json_seq(self, **kwargs):
+        """return a GeoJSON sequence representation."""
+        for f in self.features:
+            yield f.json(**kwargs) + "\n"

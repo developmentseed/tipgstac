@@ -10,8 +10,9 @@ from typing import Callable, Dict, List, Optional
 from urllib.parse import unquote_plus
 
 from ciso8601 import parse_rfc3339
-from fastapi import Depends, Path, Query
+from fastapi import Body, Depends, Path, Query
 from fastapi.responses import ORJSONResponse
+from geojson_pydantic.geometries import parse_geometry_obj
 from pygeofilter.ast import AstType
 from pygeofilter.backends.cql2_json import to_cql2
 from starlette.datastructures import QueryParams
@@ -34,8 +35,13 @@ from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, orjsonDumps
 from tipg.settings import FeaturesSettings
 from tipgstac.collections import CollectionList, PgSTACCollection, pgstac_search
-from tipgstac.dependencies import CollectionParams, CollectionsParams, collections_query
-from tipgstac.model import PgSTACSearch
+from tipgstac.dependencies import (
+    CollectionParams,
+    CollectionsParams,
+    PostSearchOutputType,
+    collections_query,
+)
+from tipgstac.model import PgSTACSearch, PostItems
 
 features_settings = FeaturesSettings()
 
@@ -60,7 +66,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 title="Search (GET)",
                 href=self.url_for(
                     request,
-                    "get_search",
+                    "search_get",
                 ),
                 type=MediaType.geojson,
                 rel="data",
@@ -117,29 +123,11 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                     description="Starts the response at an specific item.",
                 ),
             ] = None,
-            bbox_only: Annotated[
-                Optional[bool],
-                Query(
-                    description="Only return the bounding box of the feature.",
-                    alias="bbox-only",
-                ),
-            ] = None,
-            simplify: Annotated[
-                Optional[float],
-                Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
-                ),
-            ] = None,
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
             output_type = output_type or MediaType.geojson
-            geom_as_wkt = output_type not in [
-                MediaType.geojson,
-                MediaType.geojsonseq,
-                MediaType.html,
-            ]
 
             item_list = await collection.features(
                 request.app.state.pool,
@@ -151,9 +139,6 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 properties=properties,
                 limit=limit,
                 token=offset,
-                bbox_only=bbox_only,
-                simplify=simplify,
-                geom_as_wkt=geom_as_wkt,
                 query=query,
             )
 
@@ -169,7 +154,9 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": f.get("geometry", None),
+                            "geometry": parse_geometry_obj(f["geometry"]).wkt
+                            if f.get("geometry")
+                            else None,
                         }.items()
                         if v is not None
                     }
@@ -339,19 +326,6 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 PgSTACCollection, Depends(self.collection_dependency)
             ],
             itemId: Annotated[str, Path(description="Item identifier")],
-            bbox_only: Annotated[
-                Optional[bool],
-                Query(
-                    description="Only return the bounding box of the feature.",
-                    alias="bbox-only",
-                ),
-            ] = None,
-            simplify: Annotated[
-                Optional[float],
-                Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
-                ),
-            ] = None,
             properties: Optional[List[str]] = Depends(properties_query),
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
@@ -361,19 +335,10 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 raise NoPrimaryKey("No primary key is set on this table")
 
             output_type = output_type or MediaType.geojson
-            geom_as_wkt = output_type not in [
-                MediaType.geojson,
-                MediaType.geojsonseq,
-                MediaType.html,
-            ]
-
             item_list = await collection.features(
                 pool=request.app.state.pool,
-                bbox_only=bbox_only,
-                simplify=simplify,
                 ids_filter=[itemId],
                 properties=properties,
-                geom_as_wkt=geom_as_wkt,
             )
 
             if not item_list["items"]:
@@ -394,7 +359,8 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                     **feature.get("properties", {}),
                 }
                 if feature.get("geometry") is not None:
-                    row["geometry"] = (feature["geometry"],)
+                    row["geometry"] = (parse_geometry_obj(feature["geometry"]).wkt,)
+
                 rows = iter([row])
 
                 # CSV Response
@@ -474,7 +440,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             },
             tags=["OGC Features API"],
         )
-        async def get_search(  # noqa: C901
+        async def search_get(  # noqa: C901
             request: Request,
             collections_filter: Annotated[
                 Optional[List[str]], Depends(collections_query)
@@ -505,23 +471,11 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                     description="Starts the response at an specific item.",
                 ),
             ] = None,
-            bbox_only: Annotated[
-                Optional[bool],
-                Query(
-                    description="Only return the bounding box of the feature.",
-                    alias="bbox-only",
-                ),
-            ] = None,
-            simplify: Annotated[
-                Optional[float],
-                Query(
-                    description="Simplify the output geometry to given threshold in decimal degrees.",
-                ),
-            ] = None,
             output_type: Annotated[
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
+            """PgSTAC GET Search endpoint."""
             output_type = output_type or MediaType.geojson
 
             if datetime_filter:
@@ -582,7 +536,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 base_args["sortby"] = sort_param
 
             if properties:
-                base_args["fields"] = {"include": set(properties), "exclude": set()}
+                base_args["fields"] = {"include": set(properties)}
 
             clean = {}
             for k, v in base_args.items():
@@ -605,7 +559,9 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                             "collectionId": f.get("collection"),
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": f.get("geometry", None),
+                            "geometry": parse_geometry_obj(f["geometry"]).wkt
+                            if f.get("geometry")
+                            else None,
                         }.items()
                         if v is not None
                     }
@@ -636,12 +592,20 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                         },
                     )
 
-            links: List[Dict] = []
+            qs = "?" + str(request.query_params) if request.query_params else ""
+            links: List[Dict] = [
+                {
+                    "title": "Search",
+                    "href": self.url_for(request, "search_get") + qs,
+                    "rel": "self",
+                    "type": "application/geo+json",
+                },
+            ]
             if next_token := item_list["next"]:
                 query_params = QueryParams(
                     {**request.query_params, "offset": next_token}
                 )
-                url = self.url_for(request, "get_search") + f"?{query_params}"
+                url = self.url_for(request, "search_get") + f"?{query_params}"
                 links.append(
                     {
                         "href": url,
@@ -656,7 +620,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 qp = dict(request.query_params)
                 qp.pop("offset")
                 query_params = QueryParams({**qp, "offset": prev_token})
-                url = self.url_for(request, "get_search")
+                url = self.url_for(request, "search_get")
                 if query_params:
                     url += f"?{query_params}"
 
@@ -738,20 +702,25 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                         MediaType.geojsonseq.value: {},
                         MediaType.ndjson.value: {},
                     },
-                    "model": model.Items,
+                    "model": PostItems,
                 },
             },
             tags=["OGC Features API"],
         )
-        async def post_search(  # noqa: C901
+        async def search_post(  # noqa: C901
             request: Request,
-            search: PgSTACSearch,
+            search: Annotated[
+                Optional[PgSTACSearch],
+                Body(description="PgSTAC Search."),
+            ] = None,
             output_type: Annotated[
-                Optional[MediaType], Depends(ItemsOutputType)
+                Optional[MediaType], Depends(PostSearchOutputType)
             ] = None,
         ):
+            """PgSTAC POST Search endpoint."""
             output_type = output_type or MediaType.geojson
 
+            search = search or PgSTACSearch()
             item_list = await pgstac_search(request.app.state.pool, search=search)
 
             if output_type in (
@@ -766,7 +735,9 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                             "collectionId": f.get("collection"),
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
-                            "geometry": f.get("geometry", None),
+                            "geometry": parse_geometry_obj(f["geometry"]).wkt
+                            if f.get("geometry")
+                            else None,
                         }.items()
                         if v is not None
                     }
@@ -797,42 +768,49 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                         },
                     )
 
-            links: List[Dict] = []
+            qs = f"?{request.query_params}" if request.query_params else ""
+            links: List[Dict] = [
+                {
+                    "title": "Search",
+                    "href": self.url_for(request, "search_get") + qs,
+                    "rel": "self",
+                    "type": "application/geo+json",
+                    "body": search.model_dump(exclude_unset=True, exclude_none=True),
+                },
+            ]
             if next_token := item_list["next"]:
-                query_params = QueryParams(
-                    {**request.query_params, "offset": next_token}
-                )
-                url = self.url_for(request, "get_search") + f"?{query_params}"
+                url = self.url_for(request, "search_post") + qs
+                body = search.model_dump(exclude_unset=True, exclude_none=True)
+                body["token"] = next_token
                 links.append(
                     {
                         "href": url,
                         "rel": "next",
                         "type": "application/geo+json",
                         "title": "Next page",
+                        "body": body,
                     },
                 )
 
             if item_list["prev"] is not None:
-                prev_token = item_list["prev"]
-                qp = dict(request.query_params)
-                qp.pop("offset")
-                query_params = QueryParams({**qp, "offset": prev_token})
-                url = self.url_for(request, "get_search")
-                if query_params:
-                    url += f"?{query_params}"
-
+                url = self.url_for(request, "search_post") + qs
+                body = search.model_dump(exclude_unset=True, exclude_none=True)
+                body["token"] = item_list["prev"]
                 links.append(
                     {
                         "href": url,
                         "rel": "prev",
                         "type": "application/geo+json",
                         "title": "Previous page",
+                        "body": body,
                     },
                 )
 
             data = {
                 "type": "FeatureCollection",
-                "description": json.dumps({**request.query_params}),
+                "description": search.model_dump_json(
+                    exclude_unset=True, exclude_none=True
+                ),
                 "numberMatched": item_list["matched"],
                 "numberReturned": len(item_list["items"]),
                 "links": links,
