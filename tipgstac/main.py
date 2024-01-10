@@ -19,16 +19,15 @@ from tipgstac.settings import APISettings
 settings = APISettings()
 postgres_settings = PostgresSettings()
 
-
-templates = Jinja2Templates(  # type: ignore
-    directory="",
+jinja2_env = jinja2.Environment(
     loader=jinja2.ChoiceLoader(
         [
-            jinja2.PackageLoader("tipgstac", "templates"),
+            jinja2.PackageLoader(__package__, "templates"),
             jinja2.PackageLoader("tipg", "templates"),
         ]
-    ),
+    )
 )
+templates = Jinja2Templates(env=jinja2_env)
 
 
 @asynccontextmanager

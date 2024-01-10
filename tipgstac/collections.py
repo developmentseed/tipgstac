@@ -74,8 +74,9 @@ class PgSTACCollection(Collection):
     dbschema: str = Field(alias="schema")
     title: Optional[str] = None
     description: Optional[str] = None
+    table_columns: List[Column] = []
     properties: List[Column] = []
-    id_column: Optional[str] = None
+    id_column: Optional[Column] = None
     geometry_column: Optional[Column] = None
     datetime_column: Optional[Column] = None
     parameters: List[Parameter] = []

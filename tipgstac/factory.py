@@ -30,7 +30,7 @@ from tipg.dependencies import (
     properties_query,
     sortby_query,
 )
-from tipg.errors import InvalidDatetime, NoPrimaryKey, NotFound
+from tipg.errors import InvalidDatetime, NotFound
 from tipg.resources.enums import MediaType
 from tipg.resources.response import GeoJSONResponse, orjsonDumps
 from tipg.settings import FeaturesSettings
@@ -147,21 +147,29 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 MediaType.json,
                 MediaType.ndjson,
             ):
-                rows = (
-                    {
-                        k: v
-                        for k, v in {
+                if any(
+                    [f.get("geometry", None) is not None for f in item_list["items"]]
+                ):
+                    rows = (
+                        {
                             "collectionId": collection.id,
                             "itemId": f.get("id"),
                             **f.get("properties", {}),
                             "geometry": parse_geometry_obj(f["geometry"]).wkt
-                            if f.get("geometry")
+                            if f.get("geometry", None)
                             else None,
-                        }.items()
-                        if v is not None
-                    }
-                    for f in item_list["items"]
-                )
+                        }
+                        for f in item_list["items"]
+                    )
+                else:
+                    rows = (
+                        {
+                            "collectionId": collection.id,
+                            "itemId": f.get("id"),
+                            **f.get("properties", {}),
+                        }
+                        for f in item_list["items"]
+                    )
 
                 # CSV Response
                 if output_type == MediaType.csv:
@@ -331,9 +339,6 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 Optional[MediaType], Depends(ItemsOutputType)
             ] = None,
         ):
-            if collection.id_column is None:
-                raise NoPrimaryKey("No primary key is set on this table")
-
             output_type = output_type or MediaType.geojson
             item_list = await collection.features(
                 pool=request.app.state.pool,
