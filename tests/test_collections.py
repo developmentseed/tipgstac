@@ -46,58 +46,46 @@ def test_collections_limit_offset(app):
     assert "next" not in rels
     assert "prev" in rels
 
-    # response = app.get("/collections", params={"bbox": "-180,81,180,87"})
-    # body = response.json()
-    # assert body["numberMatched"] < ncol  # some collections are not within the bbox
-    # ids = [x["id"] for x in body["collections"]]
-    # assert "public.nongeo_data" not in ids
-    # assert "public.canada" not in ids
 
-    # response = app.get("/collections", params={"datetime": "../2022-12-31T23:59:59Z"})
-    # body = response.json()
-    # assert body["numberMatched"] == 4
-    # ids = [x["id"] for x in body["collections"]]
-    # assert sorted(
-    #     [
-    #         "public.my_data",
-    #         "public.my_data_alt",
-    #         "public.my_data_geo",
-    #         "public.nongeo_data",
-    #     ]
-    # ) == sorted(ids)
+def test_collections_bbox(app):
+    """Test /collections endpoint."""
+    response = app.get("/collections", params={"bbox": "-180,-90,0,0"})
+    body = response.json()
+    assert body["numberMatched"] == 2
 
-    # response = app.get("/collections", params={"datetime": "2022-12-31T23:59:59Z/.."})
-    # body = response.json()
-    # assert body["numberMatched"] == 0
+    response = app.get("/collections", params={"bbox": "1,1,180,90"})
+    body = response.json()
+    assert body["numberMatched"] == 1
 
-    # response = app.get("/collections", params={"datetime": "2003-12-31T23:59:59Z/.."})
-    # body = response.json()
-    # assert body["numberMatched"] == 4
-    # ids = [x["id"] for x in body["collections"]]
-    # assert sorted(
-    #     [
-    #         "public.my_data",
-    #         "public.my_data_alt",
-    #         "public.my_data_geo",
-    #         "public.nongeo_data",
-    #     ]
-    # ) == sorted(ids)
 
-    # response = app.get("/collections", params={"datetime": "2004-12-31T23:59:59Z/.."})
-    # body = response.json()
-    # assert body["numberMatched"] == 3
-    # ids = [x["id"] for x in body["collections"]]
-    # assert sorted(
-    #     ["public.my_data", "public.my_data_alt", "public.my_data_geo"]
-    # ) == sorted(ids)
+def test_collections_datetime(app):
+    """Test /collections endpoint."""
+    response = app.get("/collections", params={"datetime": "../2005-02-01T00:00:00Z"})
+    body = response.json()
+    assert body["numberMatched"] == 2
 
-    # response = app.get(
-    #     "/collections", params={"datetime": "2004-01-01T00:00:00Z/2004-12-31T23:59:59Z"}
-    # )
-    # body = response.json()
-    # assert body["numberMatched"] == 1
-    # ids = [x["id"] for x in body["collections"]]
-    # assert ["public.nongeo_data"] == ids
+    # one collection 2010
+    response = app.get("/collections", params={"datetime": "2010-01-01T00:00:00Z/.."})
+    body = response.json()
+    print(body)
+    assert body["numberMatched"] == 1
+
+    # only one collection before 2004-05
+    response = app.get("/collections", params={"datetime": "../2004-05-01T00:00:00Z"})
+    body = response.json()
+    assert body["numberMatched"] == 1
+
+    # only one collection after 2004/05
+    response = app.get("/collections", params={"datetime": "2004-05-01T00:00:00Z/.."})
+    body = response.json()
+    assert body["numberMatched"] == 1
+
+    # only one collection between 2003 and 2004
+    response = app.get(
+        "/collections", params={"datetime": "2003-01-01T00:00:00Z/2004-01-01T00:00:00Z"}
+    )
+    body = response.json()
+    assert body["numberMatched"] == 1
 
 
 def test_collection(app):
