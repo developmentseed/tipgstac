@@ -67,7 +67,6 @@ def test_collections_datetime(app):
     # one collection 2010
     response = app.get("/collections", params={"datetime": "2010-01-01T00:00:00Z/.."})
     body = response.json()
-    print(body)
     assert body["numberMatched"] == 1
 
     # only one collection before 2004-05

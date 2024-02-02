@@ -146,8 +146,10 @@ class PostLink(model.Link):
     body: Annotated[
         Dict,
         Field(
-            description="Supplies the body parameter for Post request.",
-            example={"token": "a"},
+            json_schema_extra={
+                "description": "Supplies the body parameter for Post request.",
+                "examples": [{"token": "a"}],
+            }
         ),
     ]
 
