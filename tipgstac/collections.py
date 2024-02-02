@@ -20,7 +20,7 @@ from tipg.collections import Collection, Column, ItemList, Parameter
 from tipg.errors import InvalidDatetime, InvalidLimit
 from tipg.model import Extent
 from tipg.settings import FeaturesSettings
-from tipgstac.model import PgSTACSearch
+from tipgstac.models import ItemsSearch
 
 features_settings = FeaturesSettings()
 
@@ -28,7 +28,7 @@ features_settings = FeaturesSettings()
 async def pgstac_search(  # noqa: C901
     pool: asyncpg.BuildPgPool,
     *,
-    search: PgSTACSearch,
+    search: ItemsSearch,
 ) -> ItemList:
     """Build and run PgSTAC query."""
     if search.limit and search.limit > features_settings.max_features_per_query:
@@ -196,7 +196,7 @@ class PgSTACCollection(Collection):
             if v is not None and v != []:
                 clean[k] = v
 
-        search = PgSTACSearch.model_validate(clean)
+        search = ItemsSearch.model_validate(clean)
         return await pgstac_search(pool=pool, search=search)
 
     async def get_tile(

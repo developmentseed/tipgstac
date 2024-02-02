@@ -41,7 +41,7 @@ from tipgstac.dependencies import (
     PostSearchOutputType,
     collections_query,
 )
-from tipgstac.model import PgSTACSearch, PostItems
+from tipgstac.models import ItemsSearch, PostItems
 
 features_settings = FeaturesSettings()
 
@@ -51,7 +51,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
     """Override /items and /item endpoints."""
 
     collection_dependency: Callable[..., PgSTACCollection] = CollectionParams
-    collections_dependency: Callable[..., CollectionList] = CollectionsParams
+    collections_dependency: Callable[..., CollectionList] = CollectionsParams  # type: ignore
 
     def register_routes(self):
         """Register endpoints."""
@@ -548,7 +548,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
                 if v is not None and v != []:
                     clean[k] = v
 
-            search = PgSTACSearch.model_validate(clean)
+            search = ItemsSearch.model_validate(clean)
 
             item_list = await pgstac_search(request.app.state.pool, search=search)
 
@@ -715,7 +715,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
         async def search_post(  # noqa: C901
             request: Request,
             search: Annotated[
-                Optional[PgSTACSearch],
+                Optional[ItemsSearch],
                 Body(description="PgSTAC Search."),
             ] = None,
             output_type: Annotated[
@@ -725,7 +725,7 @@ class OGCFeaturesFactory(factory.OGCFeaturesFactory):
             """PgSTAC POST Search endpoint."""
             output_type = output_type or MediaType.geojson
 
-            search = search or PgSTACSearch()
+            search = search or ItemsSearch()
             item_list = await pgstac_search(request.app.state.pool, search=search)
 
             if output_type in (
