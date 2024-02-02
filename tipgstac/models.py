@@ -21,6 +21,40 @@ Operator = Literal["eq", "neq", "lt", "lte", "gt", "gte"]
 FilterLang = Literal["cql-json", "cql-text", "cql2-json"]
 
 
+def validate_spatial(cls, v: Optional[Geometry], info: ValidationInfo):
+    """Make sure bbox is not used with Intersects."""
+    if v and info.data["bbox"]:
+        raise ValueError("intersects and bbox parameters are mutually exclusive")
+
+    return v
+
+
+def validate_bbox(cls, v: BBox):
+    """Validate BBOX."""
+    if v:
+        # Validate order
+        if len(v) == 4:
+            xmin, ymin, xmax, ymax = v
+        else:
+            xmin, ymin, min_elev, xmax, ymax, max_elev = v
+            if max_elev < min_elev:
+                raise ValueError(
+                    "Maximum elevation must greater than minimum elevation"
+                )
+
+        if xmax < xmin:
+            raise ValueError("Maximum longitude must be greater than minimum longitude")
+
+        if ymax < ymin:
+            raise ValueError("Maximum longitude must be greater than minimum longitude")
+
+        # Validate against WGS84
+        if xmin < -180 or ymin < -90 or xmax > 180 or ymax > 90:
+            raise ValueError("Bounding box must be within (-180, -90, 180, 90)")
+
+    return v
+
+
 class ItemsSearch(BaseModel):
     """PgSTAC Item Search Query model."""
 
@@ -39,43 +73,8 @@ class ItemsSearch(BaseModel):
 
     model_config = {"extra": "ignore"}
 
-    @field_validator("intersects")
-    def validate_spatial(cls, v: Optional[Geometry], info: ValidationInfo):
-        """Make sure bbox is not used with Intersects."""
-        if v and info.data["bbox"]:
-            raise ValueError("intersects and bbox parameters are mutually exclusive")
-
-        return v
-
-    @field_validator("bbox")
-    def validate_bbox(cls, v: BBox):
-        """Validate BBOX."""
-        if v:
-            # Validate order
-            if len(v) == 4:
-                xmin, ymin, xmax, ymax = v
-            else:
-                xmin, ymin, min_elev, xmax, ymax, max_elev = v
-                if max_elev < min_elev:
-                    raise ValueError(
-                        "Maximum elevation must greater than minimum elevation"
-                    )
-
-            if xmax < xmin:
-                raise ValueError(
-                    "Maximum longitude must be greater than minimum longitude"
-                )
-
-            if ymax < ymin:
-                raise ValueError(
-                    "Maximum longitude must be greater than minimum longitude"
-                )
-
-            # Validate against WGS84
-            if xmin < -180 or ymin < -90 or xmax > 180 or ymax > 90:
-                raise ValueError("Bounding box must be within (-180, -90, 180, 90)")
-
-        return v
+    v_intersects = field_validator("intersects")(validate_spatial)
+    v_bbox = field_validator("bbox")(validate_bbox)
 
 
 class CollectionsSearch(BaseModel):
@@ -96,43 +95,8 @@ class CollectionsSearch(BaseModel):
 
     model_config = {"extra": "ignore"}
 
-    @field_validator("intersects")
-    def validate_spatial(cls, v: Optional[Geometry], info: ValidationInfo):
-        """Make sure bbox is not used with Intersects."""
-        if v and info.data["bbox"]:
-            raise ValueError("intersects and bbox parameters are mutually exclusive")
-
-        return v
-
-    @field_validator("bbox")
-    def validate_bbox(cls, v: BBox):
-        """Validate BBOX."""
-        if v:
-            # Validate order
-            if len(v) == 4:
-                xmin, ymin, xmax, ymax = v
-            else:
-                xmin, ymin, min_elev, xmax, ymax, max_elev = v
-                if max_elev < min_elev:
-                    raise ValueError(
-                        "Maximum elevation must greater than minimum elevation"
-                    )
-
-            if xmax < xmin:
-                raise ValueError(
-                    "Maximum longitude must be greater than minimum longitude"
-                )
-
-            if ymax < ymin:
-                raise ValueError(
-                    "Maximum longitude must be greater than minimum longitude"
-                )
-
-            # Validate against WGS84
-            if xmin < -180 or ymin < -90 or xmax > 180 or ymax > 90:
-                raise ValueError("Bounding box must be within (-180, -90, 180, 90)")
-
-        return v
+    v_intersects = field_validator("intersects")(validate_spatial)
+    v_bbox = field_validator("bbox")(validate_bbox)
 
 
 class PostLink(model.Link):
